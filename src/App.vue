@@ -45,39 +45,53 @@
           <div class="cliente">{{ servicio.cliente }}</div>
           <span class="badge" :class="servicio.estadoPago">{{ servicio.estadoPago }}</span>
         </div>
-        <div class="precio">${{ servicio.precio }}</div>
+        <div class="precio">{{ formatearPrecio(servicio.precio) }}</div>
       </div>
 
-      <div class="detalle">
-        {{ servicio.tipoServicio }} — atendido por {{ servicio.barbero }}
-      </div>
-      <div class="detalle">
-        🗓️ {{ servicio.fecha }} — 🕐 {{ servicio.hora }}
-      </div>
-      <div class="detalle">
-        <span v-if="servicio.metodoPago === 'efectivo'">💵 Efectivo</span>
-        <span v-else-if="servicio.metodoPago === 'transferencia'">🏦 Transferencia</span>
-        <span v-else-if="servicio.metodoPago === 'tarjeta'">💳 Tarjeta</span>
+      <!-- Chips con cada servicio pedido en esta visita -->
+      <div class="chips-servicios">
+        <span class="chip" v-for="tipo in servicio.servicios" :key="tipo">{{ tipo }}</span>
       </div>
 
-      <div class="estrellas" :class="{ baja: servicio.calificacion <= 2 }">
-        <span v-for="n in 5" :key="n" :class="{ llena: n <= servicio.calificacion }">★</span>
+      <div class="fila-info">
+        <span class="info-item">✂️ {{ servicio.barbero }}</span>
+        <span class="info-item">🗓️ {{ servicio.fecha }}</span>
+        <span class="info-item">🕐 {{ servicio.hora }}</span>
       </div>
 
-      <div class="detalle" v-if="servicio.observaciones">
+      <div class="fila-info">
+        <span class="info-item" v-if="servicio.metodoPago === 'efectivo'">💵 Efectivo</span>
+        <span class="info-item" v-else-if="servicio.metodoPago === 'transferencia'">🏦 Transferencia</span>
+        <span class="info-item" v-else-if="servicio.metodoPago === 'tarjeta'">💳 Tarjeta</span>
+      </div>
+
+      <!-- Calificación: opcional, la da el cliente cuando quiera, no se fuerza al registrar -->
+      <div class="zona-calificacion">
+        <div v-if="servicio.calificacion > 0" class="fila-calificacion">
+          <div class="estrellas" :class="{ baja: servicio.calificacion <= 2 }">
+            <span v-for="n in 5" :key="n" :class="{ llena: n <= servicio.calificacion }">★</span>
+          </div>
+          <button class="btn-link" @click="abrirModalCalificacion(servicio.id)">Editar calificación</button>
+        </div>
+        <button v-else class="btn-calificar" @click="abrirModalCalificacion(servicio.id)">
+          ⭐ Califica tu corte aquí
+        </button>
+      </div>
+
+      <div class="observaciones" v-if="servicio.observaciones">
         📝 {{ servicio.observaciones }}
       </div>
 
       <div class="acciones-card">
-        <button class="btn-editar" @click="abrirModalEditar(servicio)">Editar</button>
-        <button class="btn-eliminar" @click="pedirConfirmacionEliminar(servicio.id)">Eliminar</button>
+        <button class="btn-editar" @click="abrirModalEditar(servicio)">✏️ Editar</button>
+        <button class="btn-eliminar" @click="pedirConfirmacionEliminar(servicio.id)">🗑️ Eliminar</button>
       </div>
     </div>
 
     <!-- Botón flotante para abrir el modal de nuevo servicio -->
     <button class="btn-flotante" @click="abrirModalNuevo">+</button>
 
-    <!-- Paso 1: modal con los datos básicos del corte -->
+    <!-- Modal con los datos del corte (el registro queda completo aquí, sin pasos forzados extra) -->
     <div class="fondo-modal" v-if="mostrarModal">
       <div class="caja-modal">
         <h2>{{ modoEdicion ? 'Editar servicio' : 'Nuevo servicio' }}</h2>
@@ -89,14 +103,26 @@
         </div>
 
         <div class="campo">
-          <label>Tipo de servicio</label>
-          <select v-model="formulario.tipoServicio" @change="actualizarPrecio">
-            <option value="">Selecciona...</option>
-            <option v-for="tipo in tiposServicio" :key="tipo.nombre" :value="tipo.nombre">
-              {{ tipo.nombre }} (${{ tipo.precio }})
-            </option>
-          </select>
-          <div class="error" v-if="errores.tipoServicio">{{ errores.tipoServicio }}</div>
+          <label>Servicios solicitados</label>
+          <div class="dropdown-servicios">
+            <div class="dropdown-cabecera" @click="mostrarListaServicios = !mostrarListaServicios">
+              <span v-if="formulario.servicios.length === 0" class="placeholder">Selecciona uno o varios...</span>
+              <span v-else>{{ formulario.servicios.join(', ') }}</span>
+              <span class="flecha">{{ mostrarListaServicios ? '▲' : '▼' }}</span>
+            </div>
+            <div class="dropdown-opciones" v-show="mostrarListaServicios">
+              <label class="check-servicio" v-for="tipo in catalogoServicios" :key="tipo.nombre">
+                <input
+                  type="checkbox"
+                  :value="tipo.nombre"
+                  v-model="formulario.servicios"
+                  @change="actualizarPrecio"
+                >
+                {{ tipo.nombre }} (${{ tipo.precio.toLocaleString('es-CO') }})
+              </label>
+            </div>
+          </div>
+          <div class="error" v-if="errores.servicios">{{ errores.servicios }}</div>
         </div>
 
         <div class="campo">
@@ -112,7 +138,7 @@
         <div class="campo-doble">
           <div class="campo">
             <label>Fecha</label>
-            <input type="date" v-model="formulario.fecha">
+            <input type="date" v-model="formulario.fecha" :min="fechaHoy()">
             <div class="error" v-if="errores.fecha">{{ errores.fecha }}</div>
           </div>
           <div class="campo">
@@ -124,7 +150,7 @@
 
         <div class="campo">
           <label>Precio cobrado</label>
-          <input type="number" v-model.number="formulario.precio" min="0" placeholder="Se llena solo al elegir el servicio">
+          <input type="number" v-model.number="formulario.precio" min="0" placeholder="Se llena solo al elegir los servicios">
           <div class="error" v-if="errores.precio">{{ errores.precio }}</div>
         </div>
 
@@ -156,7 +182,7 @@
       </div>
     </div>
 
-    <!-- Spinner de "guardando" que aparece 2 segundos después de dar Guardar -->
+    <!-- Spinner de "guardando" -->
     <div class="fondo-modal" v-if="guardando">
       <div class="caja-confirmacion">
         <div class="spinner"></div>
@@ -164,13 +190,13 @@
       </div>
     </div>
 
-    <!-- Paso 2: calificación y observaciones, después de guardar el corte -->
+    <!-- Modal de calificación: el cliente lo abre cuando quiera desde la tarjeta, no se fuerza -->
     <div class="fondo-modal" v-if="mostrarModalCalificacion">
       <div class="caja-modal">
-        <h2>¿Cómo te fue con el cliente?</h2>
+        <h2>¿Cómo estuvo tu corte?</h2>
 
         <div class="campo">
-          <label>Calificación del cliente</label>
+          <label>Tu calificación</label>
           <div class="selector-estrellas">
             <span
               v-for="n in 5"
@@ -182,12 +208,13 @@
         </div>
 
         <div class="campo">
-          <label>Observaciones (opcional)</label>
-          <textarea v-model="formularioCalificacion.observaciones" rows="2" placeholder="Ej: pidió cita para el próximo mes"></textarea>
+          <label>Cuéntanos más (opcional)</label>
+          <textarea v-model="formularioCalificacion.observaciones" rows="2" placeholder="Ej: me encantó el corte, volveré pronto"></textarea>
         </div>
 
         <div class="botones-modal">
-          <button class="btn-guardar" @click="guardarCalificacion">Finalizar</button>
+          <button class="btn-cancelar" @click="cerrarModalCalificacion">Cancelar</button>
+          <button class="btn-guardar" @click="guardarCalificacion">Guardar calificación</button>
         </div>
       </div>
     </div>
@@ -221,7 +248,7 @@ export default {
       }, 1000)
     })
 
-    const tiposServicio = [
+    const catalogoServicios = [
       { nombre: 'Corte clásico', precio: 15000 },
       { nombre: 'Corte moderno', precio: 20000 },
       { nombre: 'Barba', precio: 10000 },
@@ -237,11 +264,12 @@ export default {
     const mostrarModal = ref(false)
     const modoEdicion = ref(false)
     const idEditando = ref(null)
+    const mostrarListaServicios = ref(false)
 
     function formularioVacio() {
       return {
         cliente: '',
-        tipoServicio: '',
+        servicios: [],
         barbero: '',
         fecha: '',
         hora: '',
@@ -263,11 +291,23 @@ export default {
     const mostrarConfirmacion = ref(false)
     const idAEliminar = ref(null)
 
+    function fechaHoy() {
+      const hoy = new Date()
+      const anio = hoy.getFullYear()
+      const mes = String(hoy.getMonth() + 1).padStart(2, '0')
+      const dia = String(hoy.getDate()).padStart(2, '0')
+      return `${anio}-${mes}-${dia}`
+    }
+
     function actualizarPrecio() {
-      const encontrado = tiposServicio.find(t => t.nombre === formulario.value.tipoServicio)
-      if (encontrado) {
-        formulario.value.precio = encontrado.precio
+      let total = 0
+      for (const nombre of formulario.value.servicios) {
+        const encontrado = catalogoServicios.find(t => t.nombre === nombre)
+        if (encontrado) {
+          total += encontrado.precio
+        }
       }
+      formulario.value.precio = total
     }
 
     function abrirModalNuevo() {
@@ -275,19 +315,26 @@ export default {
       idEditando.value = null
       formulario.value = formularioVacio()
       errores.value = {}
+      mostrarListaServicios.value = false
       mostrarModal.value = true
     }
 
     function abrirModalEditar(servicio) {
       modoEdicion.value = true
       idEditando.value = servicio.id
-      formulario.value = { ...servicio }
+      formulario.value = { ...servicio, servicios: [...servicio.servicios] }
       errores.value = {}
+      mostrarListaServicios.value = false
       mostrarModal.value = true
     }
 
     function cerrarModal() {
       mostrarModal.value = false
+      mostrarListaServicios.value = false
+    }
+
+    function horaValida(hora) {
+      return (hora >= '08:00' && hora <= '12:00') || (hora >= '14:00' && hora <= '18:00')
     }
 
     function validarFormulario() {
@@ -296,17 +343,21 @@ export default {
       if (!formulario.value.cliente.trim()) {
         nuevosErrores.cliente = 'El nombre del cliente es obligatorio.'
       }
-      if (!formulario.value.tipoServicio) {
-        nuevosErrores.tipoServicio = 'Selecciona un tipo de servicio.'
+      if (formulario.value.servicios.length === 0) {
+        nuevosErrores.servicios = 'Selecciona al menos un servicio.'
       }
       if (!formulario.value.barbero) {
         nuevosErrores.barbero = 'Selecciona quién atendió.'
       }
       if (!formulario.value.fecha) {
         nuevosErrores.fecha = 'Selecciona la fecha.'
+      } else if (formulario.value.fecha < fechaHoy()) {
+        nuevosErrores.fecha = 'La fecha no puede ser anterior a hoy.'
       }
       if (!formulario.value.hora) {
         nuevosErrores.hora = 'Selecciona la hora.'
+      } else if (!horaValida(formulario.value.hora)) {
+        nuevosErrores.hora = 'Horario de atención: 8:00 AM - 12:00 PM y 2:00 PM - 6:00 PM.'
       }
       if (!formulario.value.precio || formulario.value.precio <= 0) {
         nuevosErrores.precio = 'El precio debe ser mayor a 0.'
@@ -330,27 +381,22 @@ export default {
       mostrarModal.value = false
       guardando.value = true
 
-      let idGuardado
-
       if (modoEdicion.value) {
-        idGuardado = idEditando.value
-        const index = servicios.value.findIndex(s => s.id === idGuardado)
+        const index = servicios.value.findIndex(s => s.id === idEditando.value)
         if (index !== -1) {
           servicios.value[index] = { ...servicios.value[index], ...formulario.value }
         }
       } else {
-        idGuardado = Date.now()
         servicios.value.push({
           ...formulario.value,
-          id: idGuardado,
-          calificacion: 5,
+          id: Date.now(),
+          calificacion: 0,
           observaciones: ''
         })
       }
 
       setTimeout(() => {
         guardando.value = false
-        abrirModalCalificacion(idGuardado)
       }, 2000)
     }
 
@@ -358,10 +404,15 @@ export default {
       const servicio = servicios.value.find(s => s.id === id)
       idParaCalificar.value = id
       formularioCalificacion.value = {
-        calificacion: servicio ? servicio.calificacion : 5,
+        calificacion: servicio && servicio.calificacion > 0 ? servicio.calificacion : 5,
         observaciones: servicio ? servicio.observaciones : ''
       }
       mostrarModalCalificacion.value = true
+    }
+
+    function cerrarModalCalificacion() {
+      mostrarModalCalificacion.value = false
+      idParaCalificar.value = null
     }
 
     function guardarCalificacion() {
@@ -414,10 +465,12 @@ export default {
 
       const conteo = {}
       for (const s of servicios.value) {
-        conteo[s.tipoServicio] = (conteo[s.tipoServicio] || 0) + 1
+        for (const tipo of (s.servicios || [])) {
+          conteo[tipo] = (conteo[tipo] || 0) + 1
+        }
       }
 
-      let masPedido = ''
+      let masPedido = '—'
       let max = 0
       for (const tipo in conteo) {
         if (conteo[tipo] > max) {
@@ -434,22 +487,26 @@ export default {
 
     return {
       cargando,
-      tiposServicio,
+      catalogoServicios,
       barberos,
       servicios,
       mostrarModal,
       modoEdicion,
+      mostrarListaServicios,
       formulario,
       errores,
       guardando,
       mostrarModalCalificacion,
       formularioCalificacion,
       mostrarConfirmacion,
+      fechaHoy,
       actualizarPrecio,
       abrirModalNuevo,
       abrirModalEditar,
       cerrarModal,
       guardarServicio,
+      abrirModalCalificacion,
+      cerrarModalCalificacion,
       guardarCalificacion,
       pedirConfirmacionEliminar,
       cancelarEliminar,
@@ -468,11 +525,12 @@ export default {
 
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  background: #f4f1ee;
-  color: #2b2b2b;
+  font-family: -apple-system, "Segoe UI", Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: #18181b;
   padding: 16px;
   padding-bottom: 90px;
+  font-size: 16px;
 }
 
 .pantalla-carga {
@@ -482,14 +540,15 @@ body {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  color: #555;
+  color: #71717a;
+  font-size: 16px;
 }
 
 .spinner {
-  width: 44px;
-  height: 44px;
-  border: 5px solid #e2ddd5;
-  border-top: 5px solid #1f1f1f;
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e4e4e7;
+  border-top: 4px solid #4f46e5;
   border-radius: 50%;
   animation: girar 0.8s linear infinite;
   margin: 0 auto 10px;
@@ -501,131 +560,201 @@ body {
 }
 
 header {
-  background: #1f1f1f;
-  color: #fff;
-  padding: 16px;
-  text-align: center;
-  border-radius: 8px;
-  margin-bottom: 16px;
+  background: #ffffff;
+  color: #18181b;
+  padding: 18px 4px;
+  text-align: left;
+  border-bottom: 2px solid #f4f4f5;
+  margin-bottom: 20px;
 }
 
 header h1 {
   margin: 0;
-  font-size: 20px;
-  color: #f4f1ee;
+  font-size: 22px;
+  font-weight: 700;
+  color: #18181b;
 }
 
 .resumen {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .resumen .tarjeta-resumen {
   flex: 1;
-  min-width: 120px;
-  background: #fff;
-  border-radius: 10px;
-  padding: 10px;
+  min-width: 130px;
+  background: #fafafa;
+  border: 1px solid #f0f0f1;
+  border-radius: 12px;
+  padding: 14px 10px;
   text-align: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .resumen .valor {
-  font-size: 17px;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 700;
+  color: #4f46e5;
 }
 
 .resumen .etiqueta {
-  font-size: 11px;
-  color: #777;
+  font-size: 12.5px;
+  color: #71717a;
+  margin-top: 3px;
 }
 
 .servicio-card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 14px;
-  margin-bottom: 10px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  border-left: 5px solid #c9a267;
+  background: #ffffff;
+  border: 1px solid #ececee;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(24,24,27,0.08);
 }
 
 .servicio-card.pendiente {
-  border-left-color: #e0a800;
-  background: #fffaf0;
+  border-color: #fcd34d;
+  background: #fffdf5;
 }
 
 .fila-superior {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  margin-bottom: 10px;
 }
 
 .servicio-card .cliente {
-  font-weight: bold;
-  font-size: 15px;
+  font-weight: 700;
+  font-size: 18px;
 }
 
 .servicio-card .precio {
-  font-weight: bold;
-  color: #1f7a4d;
+  font-weight: 700;
+  font-size: 18px;
+  color: #4f46e5;
 }
 
 .badge {
   display: inline-block;
-  font-size: 11px;
-  padding: 2px 8px;
+  font-size: 12px;
+  padding: 3px 10px;
   border-radius: 20px;
-  margin-top: 4px;
-  color: #fff;
+  margin-top: 5px;
+  font-weight: 600;
 }
 
-.badge.pagado { background: #2e8b57; }
-.badge.pendiente { background: #e0a800; }
+.badge.pagado { background: #dcfce7; color: #15803d; }
+.badge.pendiente { background: #fef3c7; color: #b45309; }
 
-.servicio-card .detalle {
+.chips-servicios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.chip {
+  background: #eef2ff;
+  color: #4338ca;
   font-size: 13px;
-  color: #555;
-  margin-top: 6px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.fila-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.info-item {
+  font-size: 14.5px;
+  color: #52525b;
+}
+
+.zona-calificacion {
+  margin-top: 10px;
+}
+
+.fila-calificacion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .estrellas {
-  color: #ccc;
-  font-size: 14px;
-  margin-top: 6px;
+  color: #e4e4e7;
+  font-size: 17px;
 }
 
 .estrellas .llena {
-  color: #f0ad4e;
+  color: #f59e0b;
 }
 
 .estrellas.baja .llena {
-  color: #d9534f;
+  color: #ef4444;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #4f46e5;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn-calificar {
+  background: #eef2ff;
+  color: #4338ca;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.observaciones {
+  font-size: 14px;
+  color: #52525b;
+  font-style: italic;
+  margin-top: 10px;
+  background: #fafafa;
+  padding: 8px 10px;
+  border-radius: 8px;
 }
 
 .acciones-card {
   display: flex;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .acciones-card button {
   flex: 1;
-  padding: 8px;
+  padding: 10px;
   border: none;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: 8px;
+  font-size: 14.5px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.btn-editar { background: #e9e4dc; }
-.btn-eliminar { background: #f8d7d5; color: #a12922; }
+.btn-editar { background: #f4f4f5; color: #18181b; }
+.btn-eliminar { background: #fef2f2; color: #dc2626; }
 
 .vacio {
   text-align: center;
-  color: #888;
+  color: #a1a1aa;
   padding: 30px 10px;
+  font-size: 15px;
 }
 
 .btn-flotante {
@@ -635,18 +764,18 @@ header h1 {
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  background: #1f1f1f;
+  background: #4f46e5;
   color: #fff;
   font-size: 28px;
   border: none;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 14px rgba(79,70,229,0.35);
   cursor: pointer;
 }
 
 .fondo-modal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(24,24,27,0.45);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -654,7 +783,7 @@ header h1 {
 }
 
 .caja-modal {
-  background: #fff;
+  background: #ffffff;
   width: 100%;
   max-width: 480px;
   max-height: 90vh;
@@ -670,10 +799,12 @@ header h1 {
 
 .caja-modal h2 {
   margin-top: 0;
+  font-size: 19px;
+  font-weight: 700;
 }
 
 .campo {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   flex: 1;
 }
 
@@ -684,39 +815,99 @@ header h1 {
 
 .campo label {
   display: block;
-  font-size: 13px;
-  font-weight: bold;
-  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #3f3f46;
 }
 
 .campo input,
 .campo select,
 .campo textarea {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 10px;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  font-size: 15px;
+  background: #ffffff;
+  color: #18181b;
+}
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+.dropdown-servicios {
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dropdown-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  font-size: 15px;
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropdown-cabecera .placeholder {
+  color: #a1a1aa;
+}
+
+.dropdown-cabecera .flecha {
+  color: #71717a;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.dropdown-opciones {
+  border-top: 1px solid #f0f0f1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fafafa;
+}
+
+.check-servicio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: normal;
+  color: #18181b;
+}
+
+.check-servicio input {
+  width: 18px;
+  height: 18px;
+  accent-color: #4f46e5;
 }
 
 .error {
-  color: #d9534f;
-  font-size: 12px;
-  margin-top: 3px;
+  color: #dc2626;
+  font-size: 12.5px;
+  margin-top: 4px;
 }
 
 .selector-estrellas {
-  font-size: 24px;
+  font-size: 28px;
   cursor: pointer;
 }
 
 .selector-estrellas span {
-  color: #ccc;
-  margin-right: 4px;
+  color: #e4e4e7;
+  margin-right: 5px;
 }
 
 .selector-estrellas span.activa {
-  color: #f0ad4e;
+  color: #f59e0b;
 }
 
 .botones-modal {
@@ -727,21 +918,23 @@ header h1 {
 
 .botones-modal button {
   flex: 1;
-  padding: 12px;
+  padding: 13px;
   border: none;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.btn-cancelar { background: #eee; }
-.btn-guardar { background: #1f1f1f; color: #fff; }
+.btn-cancelar { background: #f4f4f5; color: #18181b; }
+.btn-guardar { background: #4f46e5; color: #fff; }
 
 .caja-confirmacion {
-  background: #fff;
+  background: #ffffff;
   border-radius: 12px;
   padding: 24px;
   max-width: 320px;
   text-align: center;
+  font-size: 15px;
 }
 </style>
