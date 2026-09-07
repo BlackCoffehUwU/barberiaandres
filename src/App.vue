@@ -38,7 +38,7 @@
       class="servicio-card"
       v-for="servicio in servicios"
       :key="servicio.id"
-      :class="{ pendiente: servicio.estadoPago === 'pendiente' }"
+      :class="{ pendiente: servicio.estadoPago === 'pendiente', abonado: servicio.estadoPago === 'abonado' }"
     >
       <div class="fila-superior">
         <div>
@@ -63,6 +63,12 @@
         <span class="info-item" v-if="servicio.metodoPago === 'efectivo'">💵 Efectivo</span>
         <span class="info-item" v-else-if="servicio.metodoPago === 'transferencia'">🏦 Transferencia</span>
         <span class="info-item" v-else-if="servicio.metodoPago === 'tarjeta'">💳 Tarjeta</span>
+      </div>
+
+      <!-- Detalle de abono, solo si el estado es "abonado" -->
+      <div class="fila-info" v-if="servicio.estadoPago === 'abonado'">
+        <span class="info-item">💰 Abonado: {{ formatearPrecio(servicio.cantidadAbonada) }}</span>
+        <span class="info-item">⏳ Falta: {{ formatearPrecio((servicio.precio || 0) - (servicio.cantidadAbonada || 0)) }}</span>
       </div>
 
       <!-- Calificación: opcional, la da el cliente cuando quiera, no se fuerza al registrar -->
@@ -150,7 +156,13 @@
 
         <div class="campo">
           <label>Precio cobrado</label>
-          <input type="number" v-model.number="formulario.precio" min="0" placeholder="Se llena solo al elegir los servicios">
+          <input
+            type="text"
+            inputmode="numeric"
+            :value="formatearNumero(formulario.precio)"
+            @input="actualizarCampoMoneda($event, 'precio')"
+            placeholder="Se llena solo al elegir los servicios"
+          >
           <div class="error" v-if="errores.precio">{{ errores.precio }}</div>
         </div>
 
@@ -170,9 +182,23 @@
           <select v-model="formulario.estadoPago">
             <option value="">Selecciona...</option>
             <option value="pagado">Pagado</option>
+            <option value="abonado">Abonado</option>
             <option value="pendiente">Pendiente</option>
           </select>
           <div class="error" v-if="errores.estadoPago">{{ errores.estadoPago }}</div>
+        </div>
+
+        <!-- Cantidad abonada: solo aparece si el estado del pago es "abonado" -->
+        <div class="campo" v-if="formulario.estadoPago === 'abonado'">
+          <label>Cantidad abonada</label>
+          <input
+            type="text"
+            inputmode="numeric"
+            :value="formatearNumero(formulario.cantidadAbonada)"
+            @input="actualizarCampoMoneda($event, 'cantidadAbonada')"
+            placeholder="Ej: 10.000"
+          >
+          <div class="error" v-if="errores.cantidadAbonada">{{ errores.cantidadAbonada }}</div>
         </div>
 
         <div class="botones-modal">
@@ -275,7 +301,8 @@ export default {
         hora: '',
         precio: null,
         metodoPago: '',
-        estadoPago: ''
+        estadoPago: '',
+        cantidadAbonada: null
       }
     }
 
@@ -310,6 +337,13 @@ export default {
       formulario.value.precio = total
     }
 
+    // Convierte lo que el usuario escribe (con o sin puntos) en un número limpio,
+    // y deja que formatearNumero() se encargue de mostrar los puntos de miles.
+    function actualizarCampoMoneda(evento, campo) {
+      const soloDigitos = evento.target.value.replace(/\D/g, '')
+      formulario.value[campo] = soloDigitos ? Number(soloDigitos) : null
+    }
+
     function abrirModalNuevo() {
       modoEdicion.value = false
       idEditando.value = null
@@ -322,7 +356,11 @@ export default {
     function abrirModalEditar(servicio) {
       modoEdicion.value = true
       idEditando.value = servicio.id
-      formulario.value = { ...servicio, servicios: [...servicio.servicios] }
+      formulario.value = {
+        ...formularioVacio(),
+        ...servicio,
+        servicios: [...servicio.servicios]
+      }
       errores.value = {}
       mostrarListaServicios.value = false
       mostrarModal.value = true
@@ -368,6 +406,13 @@ export default {
       if (!formulario.value.estadoPago) {
         nuevosErrores.estadoPago = 'Selecciona el estado del pago.'
       }
+      if (formulario.value.estadoPago === 'abonado') {
+        if (!formulario.value.cantidadAbonada || formulario.value.cantidadAbonada <= 0) {
+          nuevosErrores.cantidadAbonada = 'Ingresa la cantidad abonada.'
+        } else if (formulario.value.cantidadAbonada >= formulario.value.precio) {
+          nuevosErrores.cantidadAbonada = 'El abono debe ser menor al precio total.'
+        }
+      }
 
       errores.value = nuevosErrores
       return Object.keys(nuevosErrores).length === 0
@@ -381,14 +426,19 @@ export default {
       mostrarModal.value = false
       guardando.value = true
 
+      const datosAGuardar = { ...formulario.value }
+      if (datosAGuardar.estadoPago !== 'abonado') {
+        datosAGuardar.cantidadAbonada = null
+      }
+
       if (modoEdicion.value) {
         const index = servicios.value.findIndex(s => s.id === idEditando.value)
         if (index !== -1) {
-          servicios.value[index] = { ...servicios.value[index], ...formulario.value }
+          servicios.value[index] = { ...servicios.value[index], ...datosAGuardar }
         }
       } else {
         servicios.value.push({
-          ...formulario.value,
+          ...datosAGuardar,
           id: Date.now(),
           calificacion: 0,
           observaciones: ''
@@ -442,14 +492,14 @@ export default {
     }
 
     function formatearNumero(valor) {
-      if (!valor) return '0'
+      if (!valor) return ''
       const numero = Math.round(Number(valor))
       return numero.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
     }
 
     function formatearPrecio(valor) {
       if (!valor) return '$0'
-      return '$' + formatearNumero(valor)
+      return '$' + Math.round(Number(valor)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
     }
 
     function totalSemana() {
@@ -488,7 +538,7 @@ export default {
     }
 
     function contarPendientes() {
-      return servicios.value.filter(s => s.estadoPago === 'pendiente').length
+      return servicios.value.filter(s => s.estadoPago === 'pendiente' || s.estadoPago === 'abonado').length
     }
 
     return {
@@ -508,6 +558,7 @@ export default {
       fechaHoy,
       formatearNumero,
       actualizarPrecio,
+      actualizarCampoMoneda,
       abrirModalNuevo,
       abrirModalEditar,
       cerrarModal,
@@ -625,6 +676,11 @@ header h1 {
   background: #fffdf5;
 }
 
+.servicio-card.abonado {
+  border-color: #93c5fd;
+  background: #f5f9ff;
+}
+
 .fila-superior {
   display: flex;
   justify-content: space-between;
@@ -654,6 +710,7 @@ header h1 {
 
 .badge.pagado { background: #dcfce7; color: #15803d; }
 .badge.pendiente { background: #fef3c7; color: #b45309; }
+.badge.abonado { background: #dbeafe; color: #1d4ed8; }
 
 .chips-servicios {
   display: flex;
