@@ -29,6 +29,28 @@
       </div>
     </div>
 
+    <!-- Sección exclusiva para clientes con abono pendiente -->
+    <div v-if="obtenerAbonados().length > 0" class="seccion-abonados">
+      <h2 class="titulo-seccion">💰 Clientes abonados</h2>
+      <div class="abonado-card" v-for="servicio in obtenerAbonados()" :key="servicio.id">
+        <div class="abonado-cliente">{{ servicio.cliente }}</div>
+        <div class="abonado-fila">
+          <div class="abonado-dato">
+            <div class="abonado-valor abonado-color">{{ formatearPrecio(servicio.cantidadAbonada) }}</div>
+            <div class="abonado-etiqueta">Abonó</div>
+          </div>
+          <div class="abonado-dato">
+            <div class="abonado-valor falta-color">{{ formatearPrecio((servicio.precio || 0) - (servicio.cantidadAbonada || 0)) }}</div>
+            <div class="abonado-etiqueta">Falta</div>
+          </div>
+          <div class="abonado-dato">
+            <div class="abonado-valor">{{ formatearPrecio(servicio.precio) }}</div>
+            <div class="abonado-etiqueta">Total</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Lista de servicios registrados -->
     <div v-if="servicios.length === 0" class="vacio">
       Todavía no hay servicios registrados. Toca el botón + para agregar el primero.
@@ -541,6 +563,10 @@ export default {
       return servicios.value.filter(s => s.estadoPago === 'pendiente' || s.estadoPago === 'abonado').length
     }
 
+    function obtenerAbonados() {
+      return servicios.value.filter(s => s.estadoPago === 'abonado')
+    }
+
     return {
       cargando,
       catalogoServicios,
@@ -572,7 +598,8 @@ export default {
       formatearPrecio,
       totalSemana,
       servicioMasPedido,
-      contarPendientes
+      contarPendientes,
+      obtenerAbonados
     }
   }
 }
@@ -660,6 +687,57 @@ header h1 {
   font-size: 12.5px;
   color: #71717a;
   margin-top: 3px;
+}
+
+.seccion-abonados {
+  margin-bottom: 22px;
+}
+
+.titulo-seccion {
+  font-size: 16px;
+  font-weight: 700;
+  color: #18181b;
+  margin: 0 0 10px;
+}
+
+.abonado-card {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.abonado-cliente {
+  font-weight: 700;
+  font-size: 15.5px;
+  margin-bottom: 10px;
+  color: #18181b;
+}
+
+.abonado-fila {
+  display: flex;
+  justify-content: space-between;
+  text-align: center;
+}
+
+.abonado-dato {
+  flex: 1;
+}
+
+.abonado-valor {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #18181b;
+}
+
+.abonado-valor.abonado-color { color: #1d4ed8; }
+.abonado-valor.falta-color { color: #dc2626; }
+
+.abonado-etiqueta {
+  font-size: 12px;
+  color: #71717a;
+  margin-top: 2px;
 }
 
 .servicio-card {
