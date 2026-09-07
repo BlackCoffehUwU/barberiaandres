@@ -118,7 +118,7 @@
                   v-model="formulario.servicios"
                   @change="actualizarPrecio"
                 >
-                {{ tipo.nombre }} (${{ tipo.precio.toLocaleString('es-CO') }})
+                {{ tipo.nombre }} (${{ formatearNumero(tipo.precio) }})
               </label>
             </div>
           </div>
@@ -441,9 +441,15 @@ export default {
       idAEliminar.value = null
     }
 
+    function formatearNumero(valor) {
+      if (!valor) return '0'
+      const numero = Math.round(Number(valor))
+      return numero.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    }
+
     function formatearPrecio(valor) {
       if (!valor) return '$0'
-      return '$' + Number(valor).toLocaleString('es-CO')
+      return '$' + formatearNumero(valor)
     }
 
     function totalSemana() {
@@ -500,6 +506,7 @@ export default {
       formularioCalificacion,
       mostrarConfirmacion,
       fechaHoy,
+      formatearNumero,
       actualizarPrecio,
       abrirModalNuevo,
       abrirModalEditar,
