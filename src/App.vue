@@ -1,6 +1,5 @@
 <template>
 
-  <!-- Spinner de carga inicial: se muestra 1 segundo al abrir la app -->
   <template v-if="cargando">
     <div class="pantalla-carga">
       <div class="spinner"></div>
@@ -13,7 +12,6 @@
       <h1>💈 Barbería Don Ramiro</h1>
     </header>
 
-    <!-- Resumen: funciones normales (no computed) llamadas desde el template -->
     <div class="resumen">
       <div class="tarjeta-resumen">
         <div class="valor">{{ formatearPrecio(totalSemana()) }}</div>
@@ -29,97 +27,96 @@
       </div>
     </div>
 
-    <!-- Sección exclusiva para clientes con abono pendiente -->
     <div v-if="obtenerAbonados().length > 0" class="seccion-abonados">
       <h2 class="titulo-seccion">💰 Clientes abonados</h2>
-      <div class="abonado-card" v-for="servicio in obtenerAbonados()" :key="servicio.id">
-        <div class="abonado-cliente">{{ servicio.cliente }}</div>
-        <div class="abonado-fila">
-          <div class="abonado-dato">
-            <div class="abonado-valor abonado-color">{{ formatearPrecio(servicio.cantidadAbonada) }}</div>
-            <div class="abonado-etiqueta">Abonó</div>
-          </div>
-          <div class="abonado-dato">
-            <div class="abonado-valor falta-color">{{ formatearPrecio((servicio.precio || 0) - (servicio.cantidadAbonada || 0)) }}</div>
-            <div class="abonado-etiqueta">Falta</div>
-          </div>
-          <div class="abonado-dato">
-            <div class="abonado-valor">{{ formatearPrecio(servicio.precio) }}</div>
-            <div class="abonado-etiqueta">Total</div>
+      <div class="grilla-abonados">
+        <div class="abonado-card" v-for="servicio in obtenerAbonados()" :key="servicio.id">
+          <div class="abonado-cliente">{{ servicio.cliente }}</div>
+          <div class="abonado-fila">
+            <div class="abonado-dato">
+              <div class="abonado-valor abonado-color">{{ formatearPrecio(servicio.cantidadAbonada) }}</div>
+              <div class="abonado-etiqueta">Abonó</div>
+            </div>
+            <div class="abonado-dato">
+              <div class="abonado-valor falta-color">{{ formatearPrecio((servicio.precio || 0) - (servicio.cantidadAbonada || 0)) }}</div>
+              <div class="abonado-etiqueta">Falta</div>
+            </div>
+            <div class="abonado-dato">
+              <div class="abonado-valor">{{ formatearPrecio(servicio.precio) }}</div>
+              <div class="abonado-etiqueta">Total</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Lista de servicios registrados -->
+    <h2 class="titulo-seccion">🧾 Registros</h2>
+
     <div v-if="servicios.length === 0" class="vacio">
       Todavía no hay servicios registrados. Toca el botón + para agregar el primero.
     </div>
 
-    <div
-      class="servicio-card"
-      v-for="servicio in servicios"
-      :key="servicio.id"
-      :class="{ pendiente: servicio.estadoPago === 'pendiente', abonado: servicio.estadoPago === 'abonado' }"
-    >
-      <div class="fila-superior">
-        <div>
-          <div class="cliente">{{ servicio.cliente }}</div>
-          <span class="badge" :class="servicio.estadoPago">{{ servicio.estadoPago }}</span>
-        </div>
-        <div class="precio">{{ formatearPrecio(servicio.precio) }}</div>
-      </div>
-
-      <!-- Chips con cada servicio pedido en esta visita -->
-      <div class="chips-servicios">
-        <span class="chip" v-for="tipo in servicio.servicios" :key="tipo">{{ tipo }}</span>
-      </div>
-
-      <div class="fila-info">
-        <span class="info-item">✂️ {{ servicio.barbero }}</span>
-        <span class="info-item">🗓️ {{ servicio.fecha }}</span>
-        <span class="info-item">🕐 {{ servicio.hora }}</span>
-      </div>
-
-      <div class="fila-info">
-        <span class="info-item" v-if="servicio.metodoPago === 'efectivo'">💵 Efectivo</span>
-        <span class="info-item" v-else-if="servicio.metodoPago === 'transferencia'">🏦 Transferencia</span>
-        <span class="info-item" v-else-if="servicio.metodoPago === 'tarjeta'">💳 Tarjeta</span>
-      </div>
-
-      <!-- Detalle de abono, solo si el estado es "abonado" -->
-      <div class="fila-info" v-if="servicio.estadoPago === 'abonado'">
-        <span class="info-item">💰 Abonado: {{ formatearPrecio(servicio.cantidadAbonada) }}</span>
-        <span class="info-item">⏳ Falta: {{ formatearPrecio((servicio.precio || 0) - (servicio.cantidadAbonada || 0)) }}</span>
-      </div>
-
-      <!-- Calificación: opcional, la da el cliente cuando quiera, no se fuerza al registrar -->
-      <div class="zona-calificacion">
-        <div v-if="servicio.calificacion > 0" class="fila-calificacion">
-          <div class="estrellas" :class="{ baja: servicio.calificacion <= 2 }">
-            <span v-for="n in 5" :key="n" :class="{ llena: n <= servicio.calificacion }">★</span>
+    <div class="grilla-servicios">
+      <div
+        class="servicio-card"
+        v-for="servicio in servicios"
+        :key="servicio.id"
+        :class="{ pendiente: servicio.estadoPago === 'pendiente', abonado: servicio.estadoPago === 'abonado' }"
+      >
+        <div class="fila-superior">
+          <div>
+            <div class="cliente">{{ servicio.cliente }}</div>
+            <span class="badge" :class="servicio.estadoPago">{{ servicio.estadoPago }}</span>
           </div>
-          <button class="btn-link" @click="abrirModalCalificacion(servicio.id)">Editar calificación</button>
+          <div class="precio">{{ formatearPrecio(servicio.precio) }}</div>
         </div>
-        <button v-else class="btn-calificar" @click="abrirModalCalificacion(servicio.id)">
-          ⭐ Califica tu corte aquí
-        </button>
-      </div>
 
-      <div class="observaciones" v-if="servicio.observaciones">
-        📝 {{ servicio.observaciones }}
-      </div>
+        <div class="chips-servicios">
+          <span class="chip" v-for="tipo in servicio.servicios" :key="tipo">{{ tipo }}</span>
+        </div>
 
-      <div class="acciones-card">
-        <button class="btn-editar" @click="abrirModalEditar(servicio)">✏️ Editar</button>
-        <button class="btn-eliminar" @click="pedirConfirmacionEliminar(servicio.id)">🗑️ Eliminar</button>
+        <div class="fila-info">
+          <span class="info-item">✂️ {{ servicio.barbero }}</span>
+          <span class="info-item">🗓️ {{ servicio.fecha }}</span>
+          <span class="info-item">🕐 {{ servicio.hora }}</span>
+        </div>
+
+        <div class="fila-info">
+          <span class="info-item" v-if="servicio.metodoPago === 'efectivo'">💵 Efectivo</span>
+          <span class="info-item" v-else-if="servicio.metodoPago === 'transferencia'">🏦 Transferencia</span>
+          <span class="info-item" v-else-if="servicio.metodoPago === 'tarjeta'">💳 Tarjeta</span>
+        </div>
+
+        <div class="fila-info" v-if="servicio.estadoPago === 'abonado'">
+          <span class="info-item">💰 Abonado: {{ formatearPrecio(servicio.cantidadAbonada) }}</span>
+          <span class="info-item">⏳ Falta: {{ formatearPrecio((servicio.precio || 0) - (servicio.cantidadAbonada || 0)) }}</span>
+        </div>
+
+        <div class="zona-calificacion">
+          <div v-if="servicio.calificacion > 0" class="fila-calificacion">
+            <div class="estrellas" :class="{ baja: servicio.calificacion <= 2 }">
+              <span v-for="n in 5" :key="n" :class="{ llena: n <= servicio.calificacion }">★</span>
+            </div>
+            <button class="btn-link" @click="abrirModalCalificacion(servicio.id)">Editar calificación</button>
+          </div>
+          <button v-else class="btn-calificar" @click="abrirModalCalificacion(servicio.id)">
+            ⭐ Califica tu corte aquí
+          </button>
+        </div>
+
+        <div class="observaciones" v-if="servicio.observaciones">
+          📝 {{ servicio.observaciones }}
+        </div>
+
+        <div class="acciones-card">
+          <button class="btn-editar" @click="abrirModalEditar(servicio)">✏️ Editar</button>
+          <button class="btn-eliminar" @click="pedirConfirmacionEliminar(servicio.id)">🗑️ Eliminar</button>
+        </div>
       </div>
     </div>
 
-    <!-- Botón flotante para abrir el modal de nuevo servicio -->
     <button class="btn-flotante" @click="abrirModalNuevo">+</button>
 
-    <!-- Modal con los datos del corte (el registro queda completo aquí, sin pasos forzados extra) -->
     <div class="fondo-modal" v-if="mostrarModal">
       <div class="caja-modal">
         <h2>{{ modoEdicion ? 'Editar servicio' : 'Nuevo servicio' }}</h2>
@@ -143,8 +140,8 @@
                 <input
                   type="checkbox"
                   :value="tipo.nombre"
-                  v-model="formulario.servicios"
-                  @change="actualizarPrecio"
+                  :checked="formulario.servicios.includes(tipo.nombre)"
+                  @change="seleccionarServicio(tipo.nombre)"
                 >
                 {{ tipo.nombre }} (${{ formatearNumero(tipo.precio) }})
               </label>
@@ -162,7 +159,6 @@
           <div class="error" v-if="errores.barbero">{{ errores.barbero }}</div>
         </div>
 
-        <!-- Fecha y hora en cuadros separados -->
         <div class="campo-doble">
           <div class="campo">
             <label>Fecha</label>
@@ -171,7 +167,7 @@
           </div>
           <div class="campo">
             <label>Hora</label>
-            <input type="time" v-model="formulario.hora">
+            <input type="time" v-model="formulario.hora" :min="horaMinimaCampo()">
             <div class="error" v-if="errores.hora">{{ errores.hora }}</div>
           </div>
         </div>
@@ -210,7 +206,6 @@
           <div class="error" v-if="errores.estadoPago">{{ errores.estadoPago }}</div>
         </div>
 
-        <!-- Cantidad abonada: solo aparece si el estado del pago es "abonado" -->
         <div class="campo" v-if="formulario.estadoPago === 'abonado'">
           <label>Cantidad abonada</label>
           <input
@@ -230,7 +225,6 @@
       </div>
     </div>
 
-    <!-- Spinner de "guardando" -->
     <div class="fondo-modal" v-if="guardando">
       <div class="caja-confirmacion">
         <div class="spinner"></div>
@@ -238,7 +232,6 @@
       </div>
     </div>
 
-    <!-- Modal de calificación: el cliente lo abre cuando quiera desde la tarjeta, no se fuerza -->
     <div class="fondo-modal" v-if="mostrarModalCalificacion">
       <div class="caja-modal">
         <h2>¿Cómo estuvo tu corte?</h2>
@@ -267,7 +260,6 @@
       </div>
     </div>
 
-    <!-- Modal de confirmación de borrado (reemplaza al confirm() nativo de JS) -->
     <div class="fondo-modal" v-if="mostrarConfirmacion">
       <div class="caja-confirmacion">
         <p>¿Seguro que quieres eliminar este servicio? Esta acción no se puede deshacer.</p>
@@ -359,8 +351,34 @@ export default {
       formulario.value.precio = total
     }
 
-    // Convierte lo que el usuario escribe (con o sin puntos) en un número limpio,
-    // y deja que formatearNumero() se encargue de mostrar los puntos de miles.
+    const tiposDeCorte = ['Corte clásico', 'Corte moderno', 'Corte + Barba']
+
+    function seleccionarServicio(tipo) {
+      const yaEstaba = formulario.value.servicios.includes(tipo)
+
+      if (yaEstaba) {
+        formulario.value.servicios = formulario.value.servicios.filter(s => s !== tipo)
+      } else {
+        let nuevaSeleccion = [...formulario.value.servicios, tipo]
+
+        if (tiposDeCorte.includes(tipo)) {
+          nuevaSeleccion = nuevaSeleccion.filter(s => !tiposDeCorte.includes(s) || s === tipo)
+        }
+
+        if (tipo === 'Corte + Barba') {
+          nuevaSeleccion = nuevaSeleccion.filter(s => s !== 'Barba')
+        }
+
+        if (tipo === 'Barba') {
+          nuevaSeleccion = nuevaSeleccion.filter(s => s !== 'Corte + Barba')
+        }
+
+        formulario.value.servicios = nuevaSeleccion
+      }
+
+      actualizarPrecio()
+    }
+
     function actualizarCampoMoneda(evento, campo) {
       const soloDigitos = evento.target.value.replace(/\D/g, '')
       formulario.value[campo] = soloDigitos ? Number(soloDigitos) : null
@@ -397,6 +415,27 @@ export default {
       return (hora >= '08:00' && hora <= '12:00') || (hora >= '14:00' && hora <= '18:00')
     }
 
+    function horaMinimaCampo() {
+      if (formulario.value.fecha !== fechaHoy()) return ''
+      const ahora = new Date()
+      ahora.setHours(ahora.getHours() + 1)
+      const horas = String(ahora.getHours()).padStart(2, '0')
+      const minutos = String(ahora.getMinutes()).padStart(2, '0')
+      return `${horas}:${minutos}`
+    }
+
+    function minutosDesdeMedianoche(horaTexto) {
+      const partes = horaTexto.split(':')
+      const horas = Number(partes[0])
+      const minutos = Number(partes[1])
+      return (horas * 60) + minutos
+    }
+
+    function minutosAhora() {
+      const ahora = new Date()
+      return (ahora.getHours() * 60) + ahora.getMinutes()
+    }
+
     function validarFormulario() {
       const nuevosErrores = {}
 
@@ -418,6 +457,15 @@ export default {
         nuevosErrores.hora = 'Selecciona la hora.'
       } else if (!horaValida(formulario.value.hora)) {
         nuevosErrores.hora = 'Horario de atención: 8:00 AM - 12:00 PM y 2:00 PM - 6:00 PM.'
+      } else if (formulario.value.fecha === fechaHoy()) {
+        const minutosElegidos = minutosDesdeMedianoche(formulario.value.hora)
+        const minutosActuales = minutosAhora()
+
+        if (minutosElegidos < minutosActuales) {
+          nuevosErrores.hora = 'Hora pasada, elija una hora válida.'
+        } else if (minutosElegidos < minutosActuales + 60) {
+          nuevosErrores.hora = 'La cita debe hacerse mínimo una hora después de la actual.'
+        }
       }
       if (!formulario.value.precio || formulario.value.precio <= 0) {
         nuevosErrores.precio = 'El precio debe ser mayor a 0.'
@@ -582,8 +630,10 @@ export default {
       formularioCalificacion,
       mostrarConfirmacion,
       fechaHoy,
+      horaMinimaCampo,
       formatearNumero,
       actualizarPrecio,
+      seleccionarServicio,
       actualizarCampoMoneda,
       abrirModalNuevo,
       abrirModalEditar,
@@ -610,9 +660,9 @@ export default {
 
 body {
   margin: 0;
-  font-family: -apple-system, "Segoe UI", Arial, Helvetica, sans-serif;
-  background: #ffffff;
-  color: #18181b;
+  font-family: Georgia, "Times New Roman", serif;
+  background: #f3e7d3;
+  color: #3b2412;
   padding: 16px;
   padding-bottom: 90px;
   font-size: 16px;
@@ -625,15 +675,15 @@ body {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  color: #71717a;
+  color: #8a6a4a;
   font-size: 16px;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #e4e4e7;
-  border-top: 4px solid #4f46e5;
+  border: 4px solid #e3d2b4;
+  border-top: 4px solid #7a4a26;
   border-radius: 50%;
   animation: girar 0.8s linear infinite;
   margin: 0 auto 10px;
@@ -645,19 +695,20 @@ body {
 }
 
 header {
-  background: #ffffff;
-  color: #18181b;
-  padding: 18px 4px;
+  background: #3b2412;
+  color: #f3e7d3;
+  padding: 20px 16px;
   text-align: left;
-  border-bottom: 2px solid #f4f4f5;
-  margin-bottom: 20px;
+  border-bottom: 4px solid #a97449;
+  margin: -16px -16px 20px -16px;
 }
 
 header h1 {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: #18181b;
+  color: #f3e7d3;
+  letter-spacing: 0.5px;
 }
 
 .resumen {
@@ -670,8 +721,8 @@ header h1 {
 .resumen .tarjeta-resumen {
   flex: 1;
   min-width: 130px;
-  background: #fafafa;
-  border: 1px solid #f0f0f1;
+  background: #ece0c8;
+  border: 1px solid #d9c4a0;
   border-radius: 12px;
   padding: 14px 10px;
   text-align: center;
@@ -680,12 +731,12 @@ header h1 {
 .resumen .valor {
   font-size: 18px;
   font-weight: 700;
-  color: #4f46e5;
+  color: #7a4a26;
 }
 
 .resumen .etiqueta {
   font-size: 12.5px;
-  color: #71717a;
+  color: #8a6a4a;
   margin-top: 3px;
 }
 
@@ -696,28 +747,35 @@ header h1 {
 .titulo-seccion {
   font-size: 16px;
   font-weight: 700;
-  color: #18181b;
+  color: #3b2412;
   margin: 0 0 10px;
 }
 
+.grilla-abonados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .abonado-card {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: #ecdcbf;
+  border: 1px solid #c9a15a;
   border-radius: 14px;
   padding: 14px 16px;
-  margin-bottom: 10px;
+  width: 260px;
 }
 
 .abonado-cliente {
   font-weight: 700;
   font-size: 15.5px;
   margin-bottom: 10px;
-  color: #18181b;
+  color: #3b2412;
 }
 
 .abonado-fila {
   display: flex;
   justify-content: space-between;
+  gap: 8px;
   text-align: center;
 }
 
@@ -728,35 +786,42 @@ header h1 {
 .abonado-valor {
   font-size: 15.5px;
   font-weight: 700;
-  color: #18181b;
+  color: #3b2412;
 }
 
-.abonado-valor.abonado-color { color: #1d4ed8; }
-.abonado-valor.falta-color { color: #dc2626; }
+.abonado-valor.abonado-color { color: #a05a1c; }
+.abonado-valor.falta-color { color: #9a3324; }
 
 .abonado-etiqueta {
   font-size: 12px;
-  color: #71717a;
+  color: #8a6a4a;
   margin-top: 2px;
 }
 
+.grilla-servicios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
 .servicio-card {
-  background: #ffffff;
-  border: 1px solid #ececee;
+  background: #fbf4e6;
+  border: 1px solid #d9c4a0;
   border-radius: 14px;
-  padding: 18px;
-  margin-bottom: 14px;
-  box-shadow: 0 4px 14px rgba(24,24,27,0.08);
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(59,36,18,0.15);
+  width: 300px;
+  min-height: 300px;
 }
 
 .servicio-card.pendiente {
-  border-color: #fcd34d;
-  background: #fffdf5;
+  border-color: #c9a15a;
+  background: #fdf3e0;
 }
 
 .servicio-card.abonado {
-  border-color: #93c5fd;
-  background: #f5f9ff;
+  border-color: #a97449;
+  background: #f6ead4;
 }
 
 .fila-superior {
@@ -769,12 +834,13 @@ header h1 {
 .servicio-card .cliente {
   font-weight: 700;
   font-size: 18px;
+  color: #3b2412;
 }
 
 .servicio-card .precio {
   font-weight: 700;
   font-size: 18px;
-  color: #4f46e5;
+  color: #7a4a26;
 }
 
 .badge {
@@ -786,9 +852,9 @@ header h1 {
   font-weight: 600;
 }
 
-.badge.pagado { background: #dcfce7; color: #15803d; }
-.badge.pendiente { background: #fef3c7; color: #b45309; }
-.badge.abonado { background: #dbeafe; color: #1d4ed8; }
+.badge.pagado { background: #dbe7c9; color: #4d6b2e; }
+.badge.pendiente { background: #f3ddb0; color: #8a5a15; }
+.badge.abonado { background: #e6d1a8; color: #7a4a1e; }
 
 .chips-servicios {
   display: flex;
@@ -798,8 +864,8 @@ header h1 {
 }
 
 .chip {
-  background: #eef2ff;
-  color: #4338ca;
+  background: #ecdcbf;
+  color: #6b4423;
   font-size: 13px;
   font-weight: 600;
   padding: 4px 10px;
@@ -815,7 +881,7 @@ header h1 {
 
 .info-item {
   font-size: 14.5px;
-  color: #52525b;
+  color: #6b4f37;
 }
 
 .zona-calificacion {
@@ -830,22 +896,22 @@ header h1 {
 }
 
 .estrellas {
-  color: #e4e4e7;
+  color: #e3d2b4;
   font-size: 17px;
 }
 
 .estrellas .llena {
-  color: #f59e0b;
+  color: #b8860b;
 }
 
 .estrellas.baja .llena {
-  color: #ef4444;
+  color: #9a3324;
 }
 
 .btn-link {
   background: none;
   border: none;
-  color: #4f46e5;
+  color: #7a4a26;
   font-size: 13px;
   text-decoration: underline;
   cursor: pointer;
@@ -853,8 +919,8 @@ header h1 {
 }
 
 .btn-calificar {
-  background: #eef2ff;
-  color: #4338ca;
+  background: #ecdcbf;
+  color: #6b4423;
   border: none;
   border-radius: 8px;
   padding: 8px 12px;
@@ -865,10 +931,10 @@ header h1 {
 
 .observaciones {
   font-size: 14px;
-  color: #52525b;
+  color: #6b4f37;
   font-style: italic;
   margin-top: 10px;
-  background: #fafafa;
+  background: #f3e7d3;
   padding: 8px 10px;
   border-radius: 8px;
 }
@@ -889,12 +955,12 @@ header h1 {
   cursor: pointer;
 }
 
-.btn-editar { background: #f4f4f5; color: #18181b; }
-.btn-eliminar { background: #fef2f2; color: #dc2626; }
+.btn-editar { background: #ece0c8; color: #3b2412; }
+.btn-eliminar { background: #f3ddd3; color: #9a3324; }
 
 .vacio {
   text-align: center;
-  color: #a1a1aa;
+  color: #a4876a;
   padding: 30px 10px;
   font-size: 15px;
 }
@@ -906,18 +972,18 @@ header h1 {
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  background: #4f46e5;
-  color: #fff;
+  background: #3b2412;
+  color: #f3e7d3;
   font-size: 28px;
   border: none;
-  box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+  box-shadow: 0 4px 14px rgba(59,36,18,0.4);
   cursor: pointer;
 }
 
 .fondo-modal {
   position: fixed;
   inset: 0;
-  background: rgba(24,24,27,0.45);
+  background: rgba(59,36,18,0.55);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -925,7 +991,7 @@ header h1 {
 }
 
 .caja-modal {
-  background: #ffffff;
+  background: #fbf4e6;
   width: 100%;
   max-width: 480px;
   max-height: 90vh;
@@ -943,6 +1009,7 @@ header h1 {
   margin-top: 0;
   font-size: 19px;
   font-weight: 700;
+  color: #3b2412;
 }
 
 .campo {
@@ -960,7 +1027,7 @@ header h1 {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 5px;
-  color: #3f3f46;
+  color: #5a3d24;
 }
 
 .campo input,
@@ -968,22 +1035,22 @@ header h1 {
 .campo textarea {
   width: 100%;
   padding: 10px;
-  border: 1px solid #e4e4e7;
+  border: 1px solid #d9c4a0;
   border-radius: 8px;
   font-size: 15px;
-  background: #ffffff;
-  color: #18181b;
+  background: #fffaf0;
+  color: #3b2412;
 }
 
 .campo input:focus,
 .campo select:focus,
 .campo textarea:focus {
   outline: none;
-  border-color: #4f46e5;
+  border-color: #7a4a26;
 }
 
 .dropdown-servicios {
-  border: 1px solid #e4e4e7;
+  border: 1px solid #d9c4a0;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -995,26 +1062,26 @@ header h1 {
   padding: 10px;
   font-size: 15px;
   cursor: pointer;
-  background: #ffffff;
+  background: #fffaf0;
 }
 
 .dropdown-cabecera .placeholder {
-  color: #a1a1aa;
+  color: #a4876a;
 }
 
 .dropdown-cabecera .flecha {
-  color: #71717a;
+  color: #8a6a4a;
   font-size: 12px;
   margin-left: 8px;
 }
 
 .dropdown-opciones {
-  border-top: 1px solid #f0f0f1;
+  border-top: 1px solid #e3d2b4;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #fafafa;
+  background: #f3e7d3;
 }
 
 .check-servicio {
@@ -1023,17 +1090,17 @@ header h1 {
   gap: 8px;
   font-size: 14.5px;
   font-weight: normal;
-  color: #18181b;
+  color: #3b2412;
 }
 
 .check-servicio input {
   width: 18px;
   height: 18px;
-  accent-color: #4f46e5;
+  accent-color: #7a4a26;
 }
 
 .error {
-  color: #dc2626;
+  color: #9a3324;
   font-size: 12.5px;
   margin-top: 4px;
 }
@@ -1044,12 +1111,12 @@ header h1 {
 }
 
 .selector-estrellas span {
-  color: #e4e4e7;
+  color: #e3d2b4;
   margin-right: 5px;
 }
 
 .selector-estrellas span.activa {
-  color: #f59e0b;
+  color: #b8860b;
 }
 
 .botones-modal {
@@ -1068,15 +1135,21 @@ header h1 {
   cursor: pointer;
 }
 
-.btn-cancelar { background: #f4f4f5; color: #18181b; }
-.btn-guardar { background: #4f46e5; color: #fff; }
+.btn-cancelar { background: #ece0c8; color: #3b2412; }
+.btn-guardar { background: #3b2412; color: #f3e7d3; }
 
 .caja-confirmacion {
-  background: #ffffff;
+  background: #fbf4e6;
   border-radius: 12px;
   padding: 24px;
   max-width: 320px;
   text-align: center;
   font-size: 15px;
 }
+
+.caja-confirmacion p {
+  margin-bottom: 20px;
+  color: #3b2412;
+}
+
 </style>
