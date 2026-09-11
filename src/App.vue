@@ -97,7 +97,7 @@
             <div class="estrellas" :class="{ baja: servicio.calificacion <= 2 }">
               <span v-for="n in 5" :key="n" :class="{ llena: n <= servicio.calificacion }">★</span>
             </div>
-            <button class="btn-link" @click="abrirModalCalificacion(servicio.id)">Editar calificación</button>
+            <span class="calificacion-fija">Calificación registrada</span>
           </div>
           <button v-else class="btn-calificar" @click="abrirModalCalificacion(servicio.id)">
             ⭐ Califica tu corte aquí
@@ -173,14 +173,8 @@
         </div>
 
         <div class="campo">
-          <label>Precio cobrado</label>
-          <input
-            type="text"
-            inputmode="numeric"
-            :value="formatearNumero(formulario.precio)"
-            @input="actualizarCampoMoneda($event, 'precio')"
-            placeholder="Se llena solo al elegir los servicios"
-          >
+          <label>Precio total</label>
+          <div class="precio-fijo">{{ formulario.precio ? formatearPrecio(formulario.precio) : 'Se calcula al elegir los servicios' }}</div>
           <div class="error" v-if="errores.precio">{{ errores.precio }}</div>
         </div>
 
@@ -468,7 +462,7 @@ export default {
         }
       }
       if (!formulario.value.precio || formulario.value.precio <= 0) {
-        nuevosErrores.precio = 'El precio debe ser mayor a 0.'
+        nuevosErrores.precio = 'Selecciona al menos un servicio para calcular el precio.'
       }
       if (!formulario.value.metodoPago) {
         nuevosErrores.metodoPago = 'Selecciona el método de pago.'
@@ -522,11 +516,9 @@ export default {
 
     function abrirModalCalificacion(id) {
       const servicio = servicios.value.find(s => s.id === id)
+      if (servicio && servicio.calificacion > 0) return
       idParaCalificar.value = id
-      formularioCalificacion.value = {
-        calificacion: servicio && servicio.calificacion > 0 ? servicio.calificacion : 5,
-        observaciones: servicio ? servicio.observaciones : ''
-      }
+      formularioCalificacion.value = { calificacion: 5, observaciones: '' }
       mostrarModalCalificacion.value = true
     }
 
@@ -665,7 +657,7 @@ body {
   color: #3b2412;
   padding: 16px;
   padding-bottom: 90px;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .pantalla-carga {
@@ -676,7 +668,7 @@ body {
   justify-content: center;
   gap: 14px;
   color: #8a6a4a;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .spinner {
@@ -697,7 +689,7 @@ body {
 header {
   background: #3b2412;
   color: #f3e7d3;
-  padding: 20px 16px;
+  padding: 22px 16px;
   text-align: left;
   border-bottom: 4px solid #a97449;
   margin: -16px -16px 20px -16px;
@@ -705,7 +697,7 @@ header {
 
 header h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: 25px;
   font-weight: 700;
   color: #f3e7d3;
   letter-spacing: 0.5px;
@@ -720,24 +712,24 @@ header h1 {
 
 .resumen .tarjeta-resumen {
   flex: 1;
-  min-width: 130px;
+  min-width: 150px;
   background: #ece0c8;
   border: 1px solid #d9c4a0;
   border-radius: 12px;
-  padding: 14px 10px;
+  padding: 16px 12px;
   text-align: center;
 }
 
 .resumen .valor {
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 700;
   color: #7a4a26;
 }
 
 .resumen .etiqueta {
-  font-size: 12.5px;
+  font-size: 14px;
   color: #8a6a4a;
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 .seccion-abonados {
@@ -745,7 +737,7 @@ header h1 {
 }
 
 .titulo-seccion {
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 700;
   color: #3b2412;
   margin: 0 0 10px;
@@ -761,13 +753,13 @@ header h1 {
   background: #ecdcbf;
   border: 1px solid #c9a15a;
   border-radius: 14px;
-  padding: 14px 16px;
-  width: 260px;
+  padding: 16px 18px;
+  width: 290px;
 }
 
 .abonado-cliente {
   font-weight: 700;
-  font-size: 15.5px;
+  font-size: 18px;
   margin-bottom: 10px;
   color: #3b2412;
 }
@@ -784,7 +776,7 @@ header h1 {
 }
 
 .abonado-valor {
-  font-size: 15.5px;
+  font-size: 17px;
   font-weight: 700;
   color: #3b2412;
 }
@@ -793,7 +785,7 @@ header h1 {
 .abonado-valor.falta-color { color: #9a3324; }
 
 .abonado-etiqueta {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #8a6a4a;
   margin-top: 2px;
 }
@@ -801,17 +793,17 @@ header h1 {
 .grilla-servicios {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 16px;
 }
 
 .servicio-card {
   background: #fbf4e6;
   border: 1px solid #d9c4a0;
   border-radius: 14px;
-  padding: 16px;
+  padding: 18px;
   box-shadow: 0 4px 14px rgba(59,36,18,0.15);
-  width: 300px;
-  min-height: 300px;
+  width: 340px;
+  min-height: 320px;
 }
 
 .servicio-card.pendiente {
@@ -833,20 +825,20 @@ header h1 {
 
 .servicio-card .cliente {
   font-weight: 700;
-  font-size: 18px;
+  font-size: 20px;
   color: #3b2412;
 }
 
 .servicio-card .precio {
   font-weight: 700;
-  font-size: 18px;
+  font-size: 20px;
   color: #7a4a26;
 }
 
 .badge {
   display: inline-block;
-  font-size: 12px;
-  padding: 3px 10px;
+  font-size: 13.5px;
+  padding: 4px 11px;
   border-radius: 20px;
   margin-top: 5px;
   font-weight: 600;
@@ -866,9 +858,9 @@ header h1 {
 .chip {
   background: #ecdcbf;
   color: #6b4423;
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 600;
-  padding: 4px 10px;
+  padding: 5px 11px;
   border-radius: 20px;
 }
 
@@ -880,7 +872,7 @@ header h1 {
 }
 
 .info-item {
-  font-size: 14.5px;
+  font-size: 16px;
   color: #6b4f37;
 }
 
@@ -897,7 +889,7 @@ header h1 {
 
 .estrellas {
   color: #e3d2b4;
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .estrellas .llena {
@@ -908,14 +900,10 @@ header h1 {
   color: #9a3324;
 }
 
-.btn-link {
-  background: none;
-  border: none;
-  color: #7a4a26;
-  font-size: 13px;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0;
+.calificacion-fija {
+  font-size: 14px;
+  color: #8a6a4a;
+  font-style: italic;
 }
 
 .btn-calificar {
@@ -923,19 +911,19 @@ header h1 {
   color: #6b4423;
   border: none;
   border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: 9px 13px;
+  font-size: 15.5px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .observaciones {
-  font-size: 14px;
+  font-size: 15.5px;
   color: #6b4f37;
   font-style: italic;
   margin-top: 10px;
   background: #f3e7d3;
-  padding: 8px 10px;
+  padding: 9px 11px;
   border-radius: 8px;
 }
 
@@ -947,10 +935,10 @@ header h1 {
 
 .acciones-card button {
   flex: 1;
-  padding: 10px;
+  padding: 11px;
   border: none;
   border-radius: 8px;
-  font-size: 14.5px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -962,7 +950,7 @@ header h1 {
   text-align: center;
   color: #a4876a;
   padding: 30px 10px;
-  font-size: 15px;
+  font-size: 16.5px;
 }
 
 .btn-flotante {
@@ -1007,7 +995,7 @@ header h1 {
 
 .caja-modal h2 {
   margin-top: 0;
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 700;
   color: #3b2412;
 }
@@ -1024,7 +1012,7 @@ header h1 {
 
 .campo label {
   display: block;
-  font-size: 14px;
+  font-size: 15.5px;
   font-weight: 600;
   margin-bottom: 5px;
   color: #5a3d24;
@@ -1034,10 +1022,10 @@ header h1 {
 .campo select,
 .campo textarea {
   width: 100%;
-  padding: 10px;
+  padding: 11px;
   border: 1px solid #d9c4a0;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 16.5px;
   background: #fffaf0;
   color: #3b2412;
 }
@@ -1047,6 +1035,17 @@ header h1 {
 .campo textarea:focus {
   outline: none;
   border-color: #7a4a26;
+}
+
+.precio-fijo {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #d9c4a0;
+  border-radius: 8px;
+  font-size: 16.5px;
+  font-weight: 700;
+  background: #ece0c8;
+  color: #3b2412;
 }
 
 .dropdown-servicios {
@@ -1059,8 +1058,8 @@ header h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px;
-  font-size: 15px;
+  padding: 11px;
+  font-size: 16.5px;
   cursor: pointer;
   background: #fffaf0;
 }
@@ -1071,16 +1070,16 @@ header h1 {
 
 .dropdown-cabecera .flecha {
   color: #8a6a4a;
-  font-size: 12px;
+  font-size: 13px;
   margin-left: 8px;
 }
 
 .dropdown-opciones {
   border-top: 1px solid #e3d2b4;
-  padding: 10px;
+  padding: 11px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
   background: #f3e7d3;
 }
 
@@ -1088,25 +1087,25 @@ header h1 {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14.5px;
+  font-size: 16px;
   font-weight: normal;
   color: #3b2412;
 }
 
 .check-servicio input {
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
   accent-color: #7a4a26;
 }
 
 .error {
   color: #9a3324;
-  font-size: 12.5px;
+  font-size: 13.5px;
   margin-top: 4px;
 }
 
 .selector-estrellas {
-  font-size: 28px;
+  font-size: 30px;
   cursor: pointer;
 }
 
@@ -1127,10 +1126,10 @@ header h1 {
 
 .botones-modal button {
   flex: 1;
-  padding: 13px;
+  padding: 14px;
   border: none;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 16.5px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1141,10 +1140,10 @@ header h1 {
 .caja-confirmacion {
   background: #fbf4e6;
   border-radius: 12px;
-  padding: 24px;
+  padding: 26px;
   max-width: 320px;
   text-align: center;
-  font-size: 15px;
+  font-size: 16.5px;
 }
 
 .caja-confirmacion p {
